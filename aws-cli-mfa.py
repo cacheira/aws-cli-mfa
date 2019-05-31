@@ -17,9 +17,32 @@ import argparse
 import subprocess
 import configparser
 import sys
-from logzero import logger
 
+# If logzero is available, use it, else, go standard
+try:
+    import logzero
+    from logzero import logger
+except ImportError:
+    # If logzero is not available, we use standard logging
+    import logging as logger 
+    logger.basicConfig(filename='aws-cli-mfa.log',
+                    filemode='w',
+                    format='[%(asctime)s] : %(levelname)s : %(message)s',
+                    #level=logger.DEBUG
+                    )
+else:
+    # We configure logzero
+    # Set a logfile (all future log messages are also saved there), but disable the default stderr logging
+    logzero.logfile("aws-cli-mfa.log", disableStderrLogger=True)
+
+ 
 CREDS_FILE = os.path.expanduser('~/.aws/credentials')
+CONFIG_FILE = os.path.expanduser('~/.aws/config')
+SESSION_DURATION = '43200' # The console default is 12 hours - https://aws.amazon.com/console/faqs/#session_expire
+
+
+
+
 
 def trimProfileName(profile):
     # in case you have a section [profile name]
@@ -33,6 +56,9 @@ def getDefaultProfile( awsConfig ):
     if default:
         logger.debug("Profile found in env(AWS_DEFAULT_PROFILE): " + default)
         return default
+    # If not, let's see if there is a profile named "default"
+    if awsConfig.has_section("default"):
+        return "default"
     # else, let's use the first option in the config file
     if awsConfig.sections() == []:
         logger.warning('"~/aws/config" is empty or misformatted')
@@ -57,8 +83,6 @@ def main():
     awsConfig = configparser.ConfigParser()
     awsConfig.read( os.path.expanduser('~/.aws/config') )
 
-
-
     parser = argparse.ArgumentParser(description='Update your AWS CLI Token')
     parser.add_argument('token',
                         help='token from your MFA device'
@@ -78,8 +102,7 @@ def main():
                         )
     parser.add_argument('--duration',
                         help='The  duration, in seconds, that the credentials should remain valid.',
-                        default = '43200'
-                        # The console default is 12 hours - https://aws.amazon.com/console/faqs/#session_expire
+                        default = SESSION_DURATION
                         )
 
     args = parser.parse_args()
@@ -89,6 +112,8 @@ def main():
     # we'll simplify for now
     if awsConfig.has_option( "profile " + args.profile , "mfa_serial" ):
         configArn = awsConfig.get( "profile " + args.profile , "mfa_serial")
+    elif awsConfig.has_option( args.profile , "mfa_serial" ):
+        configArn = awsConfig.get( args.profile , "mfa_serial")
     else:
         configArn = None
 
@@ -125,7 +150,8 @@ def main():
                             '--serial-number', args.arn, '--token-code',
                             args.token], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
-        parser.error(result.stderr.decode('utf-8').strip('\n'))
+        logger.error( result.stderr.decode('utf-8').strip('\n') )
+        parser.error( result.stderr.decode('utf-8').strip('\n') )
     
     logger.debug( 'Got response: ' + result.stdout.decode('utf-8').strip('\n') ) 
     
@@ -136,7 +162,6 @@ def main():
     awsCreds.remove_section( profileMFA )
     # and set the new ones
     awsCreds.add_section( profileMFA )
-    
     awsCreds[profileMFA]['aws_access_key_id'] = credentials['AccessKeyId']
     awsCreds[profileMFA]['aws_secret_access_key'] = credentials['SecretAccessKey']
     awsCreds[profileMFA]['aws_session_token'] = credentials['SessionToken']
