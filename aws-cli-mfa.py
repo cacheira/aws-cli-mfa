@@ -170,11 +170,11 @@ def main():
     with open(CREDS_FILE, 'w') as configFile:
         awsCreds.write(configFile)
     
-    print ("Credentials file setand valid until %s. If you want to use this profile, please use \
-            \n \t\033[1m export AWS_DEFAULT_PROFILE = %s\033[0m",
+    print ("Credentials file set and valid until {}. If you want to use this profile, please use \
+            \n\n \t\033[1m export AWS_DEFAULT_PROFILE = {} \033[0m\n".format(
             credentials['Expiration'],
-            args.profile)
-    logger.info("Credentials file set and valid until %s", credentials['Expiration'])
+            profileMFA ))
+    logger.info("Credentials file set and valid until " + credentials['Expiration'] )
 
 if __name__== "__main__":
   main()
