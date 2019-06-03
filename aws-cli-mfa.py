@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """
-Module Docstring
-
-
-TODO: Update this to use all necessary env variables here:
-https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+A tool to quickly get and set your MFA token, to make using the CLI easier.
 """
 
 __author__ = "Bruno Cacheira"
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 __license__ = "MIT"
+__maintainer__ = "Bruno Cacheira"
+__status__ = "Prototype"
 
 import os
 import json
@@ -132,7 +130,19 @@ def main():
             logger.error('ARN is not provided. Please specify via --arn')
         else:
             args.arn = configArn
+    """ 
+    # should we write down the provided arn?
 
+    if args.arn is None:
+        if 'aws_arn_mfa' not in config[args.profile]:
+            parser.error('ARN is not provided. Specify via --arn')
+
+        args.arn = config[args.profile]['aws_arn_mfa']
+    else:
+        # Update the arn with user supplied one
+        config[args.profile]['aws_arn_mfa'] = args.arn
+
+    """
     # Now let's look at the credentials file
     awsCreds = configparser.ConfigParser()
     # file path should come from somewhere else
@@ -178,30 +188,3 @@ def main():
 
 if __name__== "__main__":
   main()
-
-""" 
-
-
-if args.arn is None:
-    if 'aws_arn_mfa' not in config[args.profile]:
-        parser.error('ARN is not provided. Specify via --arn')
-
-    args.arn = config[args.profile]['aws_arn_mfa']
-else:
-    # Update the arn with user supplied one
-    config[args.profile]['aws_arn_mfa'] = args.arn
-
-
-
-credentials = json.loads(result.stdout.decode('utf-8'))['Credentials']
-
-config[args.profile]['aws_access_key_id'] = credentials['AccessKeyId']
-config[args.profile]['aws_secret_access_key'] = credentials['SecretAccessKey']
-config[args.profile]['aws_session_token'] = credentials['SessionToken']
-
-# Save the changes back to the file
-with open(args.credential_path, 'w') as configFile:
-    config.write(configFile)
-
-print('Saved {} credentials to {}'.format(args.profile, args.credential_path))
- """
