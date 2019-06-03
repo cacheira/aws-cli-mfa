@@ -51,6 +51,10 @@ def trimProfileName(profile):
 def getDefaultProfile( awsConfig ):
     # It the ENV is set, it takes percedence
     default = os.getenv('AWS_DEFAULT_PROFILE')
+    # If it's an *_mfa profile, trim it
+    # I could use split but...
+    if default != None and default[-4:] == "_mfa":
+        default = default[:-4]
     if default:
         logger.debug("Profile found in env(AWS_DEFAULT_PROFILE): " + default)
         return default
