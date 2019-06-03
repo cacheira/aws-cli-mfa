@@ -22,7 +22,7 @@ try:
     from logzero import logger
 except ImportError:
     # If logzero is not available, we use standard logging
-    import logging as logger 
+    import logging as logger
     logger.basicConfig(filename='aws-cli-mfa.log',
                     filemode='w',
                     format='[%(asctime)s] : %(levelname)s : %(message)s',
@@ -33,7 +33,7 @@ else:
     # Set a logfile (all future log messages are also saved there), but disable the default stderr logging
     logzero.logfile("aws-cli-mfa.log", disableStderrLogger=True)
 
- 
+
 CREDS_FILE = os.path.expanduser('~/.aws/credentials')
 CONFIG_FILE = os.path.expanduser('~/.aws/config')
 SESSION_DURATION = '43200' # The console default is 12 hours - https://aws.amazon.com/console/faqs/#session_expire
@@ -60,7 +60,7 @@ def getDefaultProfile( awsConfig ):
     # else, let's use the first option in the config file
     if awsConfig.sections() == []:
         logger.warning('"~/aws/config" is empty or misformatted')
-        return None 
+        return None
     default = trimProfileName( awsConfig.sections()[0] )
     logger.debug('Profile found in "~/aws/config": ' + default)
     return( default )
@@ -122,7 +122,7 @@ def main():
         if "profile " +  args.profile not in awsConfig.sections():
             parser.error('Invalid profile. Section not found in "~/.aws/config"')
             logger.error('Invalid profile. Section not found in "~/.aws/config"')
-    
+
     # If the ARN is provided or in the config...
     if args.arn is None:
         if configArn is None:
@@ -130,7 +130,7 @@ def main():
             logger.error('ARN is not provided. Please specify via --arn')
         else:
             args.arn = configArn
-    """ 
+    """
     # should we write down the provided arn?
 
     if args.arn is None:
@@ -148,11 +148,11 @@ def main():
     # file path should come from somewhere else
     awsCreds.read( os.path.expanduser('~/.aws/credentials') )
 
-    
+
     # Generate the session token from the default profile based on the environment. We do not want to overwrite these profiles as we wouldn't
     # be able to generate another token
     logger.info( 'executing: ' +
-                'aws sts get-session-token --profile %s --duration-seconds %s  --serial-number %s --token-code %s', 
+                'aws sts get-session-token --profile %s --duration-seconds %s  --serial-number %s --token-code %s',
                 args.profile, args.duration, args.arn, args.token)
     result = subprocess.run(['aws', 'sts', 'get-session-token',
                             '--profile', args.profile,
@@ -162,9 +162,9 @@ def main():
     if result.returncode != 0:
         logger.error( result.stderr.decode('utf-8').strip('\n') )
         parser.error( result.stderr.decode('utf-8').strip('\n') )
-    
-    logger.debug( 'Got response: ' + result.stdout.decode('utf-8').strip('\n') ) 
-    
+
+    logger.debug( 'Got response: ' + result.stdout.decode('utf-8').strip('\n') )
+
     credentials = json.loads(result.stdout.decode('utf-8'))['Credentials']
 
     profileMFA = args.profile + "_mfa"
@@ -175,13 +175,13 @@ def main():
     awsCreds[profileMFA]['aws_access_key_id'] = credentials['AccessKeyId']
     awsCreds[profileMFA]['aws_secret_access_key'] = credentials['SecretAccessKey']
     awsCreds[profileMFA]['aws_session_token'] = credentials['SessionToken']
-    
+
     # Save the changes back to the file
     with open(CREDS_FILE, 'w') as configFile:
         awsCreds.write(configFile)
-    
+
     print ("Credentials file set and valid until {}. If you want to use this profile, please use \
-            \n\n \t\033[1m export AWS_DEFAULT_PROFILE = {} \033[0m\n".format(
+            \n\n \t\033[1m export AWS_DEFAULT_PROFILE={} \033[0m\n".format(
             credentials['Expiration'],
             profileMFA ))
     logger.info("Credentials file set and valid until " + credentials['Expiration'] )
